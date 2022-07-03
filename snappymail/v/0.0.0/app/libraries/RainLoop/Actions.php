@@ -934,7 +934,7 @@ class Actions
 	{
 		$time = \microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'];
 		if ($iDelay > $time) {
-			\usleep(($iDelay - $time) * 1000000);
+			\usleep((int) ($iDelay - $time) * 1000000);
 		}
 	}
 
