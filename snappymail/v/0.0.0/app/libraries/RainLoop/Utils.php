@@ -123,6 +123,13 @@ class Utils
 		));
 	}
 
+	public static function SetSecureCookie(string $sName, mixed $sValue = '', int $iExpire = 0, bool $bHttpOnly = true)
+	{
+        $sValue = \MailSo\Base\Utils::UrlSafeBase64Encode(\SnappyMail\Crypt::EncryptToJSON($sValue));
+
+		return static::SetCookie($sName, $sValue, $iExpire, $bHttpOnly);
+	}
+
 	public static function ClearCookie(string $sName)
 	{
 		if (isset($_COOKIE[$sName])) {
