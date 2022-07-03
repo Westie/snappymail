@@ -111,7 +111,13 @@ abstract class Service
 		$sResult = '';
 		if (\count($aPaths) && !empty($aPaths[0]) && 'index' !== \strtolower($aPaths[0]))
 		{
-			if ('mailto' !== \strtolower($aPaths[0]) && !\SnappyMail\HTTP\SecFetch::isSameOrigin()) {
+			$allowedPaths = [
+				'mailto',
+			];
+
+			$oActions->Plugins()->RunHook('filter.external-origin-allowlist', array(&$allowedPaths));
+
+			if (!in_array(strtolower($aPaths[0]), $allowedPaths, true) && !\SnappyMail\HTTP\SecFetch::isSameOrigin()) {
 				\MailSo\Base\Http::StatusHeader(403);
 				echo $oServiceActions->ErrorTemplates('Access Denied.',
 					"Disallowed Sec-Fetch
