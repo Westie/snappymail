@@ -178,10 +178,10 @@ class Utils
 
         $iCookieLength = strlen($sValue);
 
-        if ($iCookieLength > static::SECURE_COOKIE_MAX_LENGTH) {
-        	return null;
+		if ($iCookieLength > static::SECURE_COOKIE_MAX_LENGTH) {
+			return null;
 		}
-        if ($iCookieLength <= static::SECURE_COOKIE_CHUNK_LENGTH) {
+		if ($iCookieLength <= static::SECURE_COOKIE_CHUNK_LENGTH) {
 			return static::SetCookie($sName, $sValue, $iExpire, $bHttpOnly);
 		}
 
