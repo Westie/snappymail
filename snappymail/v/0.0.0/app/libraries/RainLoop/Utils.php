@@ -193,7 +193,7 @@ class Utils
 		//
 		// note: first split will be kept with its original name as there appear to be places in code that check
 		// for $_COOKIE and then end up calling GetSecureCookie - changing that would be very dangerous
-        $iCookieMaxLength = static::SECURE_COOKIE_CHUNK_LENGTH;
+		$iCookieMaxLength = static::SECURE_COOKIE_CHUNK_LENGTH;
 		$iRequiredChunks = (int) ceil($iCookieLength / $iCookieMaxLength);
 
 		for ($i = 0; $i < $iRequiredChunks; ++$i) {
