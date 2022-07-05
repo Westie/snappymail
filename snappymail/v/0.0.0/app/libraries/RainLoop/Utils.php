@@ -31,13 +31,13 @@ class Utils
 		 *  Max secure cookie chunk length
 		 * 	Used by: GetSecureCookie, SetSecureCookie
 		 */
-		SECURE_COOKIE_CHUNK_LENGTH = 3000,
+		SECURE_COOKIE_CHUNK_LENGTH = 2500,
 
 		/**
 		 *  Total combined secure cookie length
 		 * 	Used by: GetSecureCookie, SetSecureCookie
 		 */
-		SECURE_COOKIE_MAX_LENGTH = 12000;
+		SECURE_COOKIE_MAX_LENGTH = (self::SECURE_COOKIE_CHUNK_LENGTH * 5);
 
 	public static function EncodeKeyValuesQ(array $aValues, string $sCustomKey = '') : string
 	{
@@ -138,6 +138,10 @@ class Utils
 				? $sName . '$' . $i
 				: $sName;
 
+			if (!isset($_COOKIE[$sSplitName])) {
+				return;
+			}
+
 			$sStartChar = substr($_COOKIE[$sSplitName], 0, 1);
 			$sEndChar = substr($_COOKIE[$sSplitName], -1, 1);
 
@@ -202,7 +206,7 @@ class Utils
 				: $sName;
 
 			$sChunkedValue = ($i === 0) ? '^' : '~';
-			$sChunkedValue .= substr($sValue, $iCookieChunkLength * $i, ($iCookieChunkLength * $i) + $iCookieChunkLength);
+			$sChunkedValue .= substr($sValue, $iCookieChunkLength * $i, $iCookieChunkLength);
 			$sChunkedValue .= (($i + 1) < $iRequiredChunks) ? '~' : '$';
 
 			static::SetCookie($sSplitName, $sChunkedValue, $iExpire, $bHttpOnly);
