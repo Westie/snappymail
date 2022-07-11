@@ -143,7 +143,10 @@ trait UserAuth
 	private static function SetAccountCookie(string $sName, ?Account $oAccount)
 	{
 		if ($oAccount) {
-			Utils::SetSecureCookie($sName, $oAccount);
+			Utils::SetCookie(
+				$sName,
+				\MailSo\Base\Utils::UrlSafeBase64Encode(\SnappyMail\Crypt::EncryptToJSON($oAccount))
+			);
 		} else {
 			Utils::ClearCookie($sName);
 		}
