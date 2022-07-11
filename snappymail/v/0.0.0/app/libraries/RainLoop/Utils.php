@@ -25,19 +25,7 @@ class Utils
 		 * Session cookie
 		 * Used by: EncodeKeyValuesQ, DecodeKeyValuesQ
 		 */
-		SESSION_TOKEN = 'smsession',
-
-		/**
-		 *  Max secure cookie chunk length
-		 * 	Used by: GetSecureCookie, SetSecureCookie
-		 */
-		SECURE_COOKIE_CHUNK_LENGTH = 2500,
-
-		/**
-		 *  Total combined secure cookie length
-		 * 	Used by: GetSecureCookie, SetSecureCookie
-		 */
-		SECURE_COOKIE_MAX_LENGTH = (self::SECURE_COOKIE_CHUNK_LENGTH * 5);
+		SESSION_TOKEN = 'smsession';
 
 	public static function EncodeKeyValuesQ(array $aValues, string $sCustomKey = '') : string
 	{
@@ -111,131 +99,68 @@ class Utils
 	 */
 	public static function GetCookie(string $sName, $mDefault = null)
 	{
-		return isset($_COOKIE[$sName]) ? $_COOKIE[$sName] : $mDefault;
+		if (isset($_COOKIE[$sName])) {
+			$aParts = [];
+			foreach (\array_keys($_COOKIE) as $sCookieName) {
+				if (\strtok($sCookieName, '~') === $sName) {
+					$aParts[$sCookieName] = $_COOKIE[$sCookieName];
+				}
+			}
+			\ksort($aParts);
+			return \implode('', $aParts);
+		}
+		return $mDefault;
 	}
 
 	public static function GetSecureCookie(string $sName)
 	{
-		if (!isset($_COOKIE[$sName]) || 1024 > strlen($_COOKIE[$sName])) {
-			return;
-		}
-
-		// any cookies that have been split will have their first character as caret - anything that isn't
-		// a caret and bigger than 1kb will be safe to presume is a standard secure cookie
-		if (substr($_COOKIE[$sName], 0, 1) !== '^') {
-			return \SnappyMail\Crypt::DecryptFromJSON(\MailSo\Base\Utils::UrlSafeBase64Decode($_COOKIE[$sName]));
-		}
-
-		// anything that proceeds down this step will be presumed to be a secure cookie
-		// there is no checksums involved here as it's essentially double encoded - if properly unpacked it will
-		// be JSON and if not it'll be a garbage byte stream that will either fail to be decrypted or fail to
-		// be parsed via the JSON library
-		$iMaxChunks = (int) ceil(static::SECURE_COOKIE_MAX_LENGTH / static::SECURE_COOKIE_CHUNK_LENGTH);
-		$sBuffer = '';
-
-		for ($i = 0; $i < $iMaxChunks; ++$i) {
-			$sSplitName = ($i > 0)
-				? $sName . '$' . $i
-				: $sName;
-
-			if (!isset($_COOKIE[$sSplitName])) {
-				return;
-			}
-
-			$sStartChar = substr($_COOKIE[$sSplitName], 0, 1);
-			$sEndChar = substr($_COOKIE[$sSplitName], -1, 1);
-
-			if ($i === 0 && $sStartChar !== '^' || $i > 0 && $sStartChar !== '~') {
-				return;
-			}
-			if ($sEndChar !== '$' && $sEndChar !== '~') {
-				return;
-			}
-
-			$sBuffer .= substr($_COOKIE[$sSplitName], 1, -1);
-
-			if ($sEndChar === '$') {
-				break;
-			}
-		}
-
-		return \SnappyMail\Crypt::DecryptFromJSON(\MailSo\Base\Utils::UrlSafeBase64Decode($sBuffer));
+		return isset($_COOKIE[$sName])
+			? \SnappyMail\Crypt::DecryptFromJSON(\MailSo\Base\Utils::UrlSafeBase64Decode(static::GetCookie($sName)))
+			: null;
 	}
 
 	public static function SetCookie(string $sName, string $sValue = '', int $iExpire = 0, bool $bHttpOnly = true)
 	{
 		$sPath = static::$CookieDefaultPath;
+		$sPath = $sPath && \strlen($sPath) ? $sPath : '/';
 		$_COOKIE[$sName] = $sValue;
-		\setcookie($sName, $sValue, array(
-			'expires' => $iExpire,
-			'path' => $sPath && \strlen($sPath) ? $sPath : '/',
-//			'domain' => $sDomain,
-			'secure' => isset($_SERVER['HTTPS']) || static::$CookieDefaultSecure,
-			'httponly' => $bHttpOnly,
-			'samesite' => 'Strict'
-		));
-	}
-
-	public static function SetSecureCookie(string $sName, mixed $sValue = '', int $iExpire = 0, bool $bHttpOnly = true)
-	{
-        $sValue = \MailSo\Base\Utils::UrlSafeBase64Encode(\SnappyMail\Crypt::EncryptToJSON($sValue));
-
-        $iCookieLength = strlen($sValue);
-
-		if ($iCookieLength > static::SECURE_COOKIE_MAX_LENGTH) {
-			return null;
+		// https://github.com/the-djmaze/snappymail/issues/451
+		// The 4K browser limit is for the entire cookie, including name, value, expiry date etc.
+		$iMaxSize = 4000 - \strlen($sPath . $sName);
+/*
+		if ($iMaxSize < \strlen($sValue)) {
+			throw new \Exception("Cookie '{$sName}' value too long");
 		}
-		if ($iCookieLength <= static::SECURE_COOKIE_CHUNK_LENGTH) {
-			return static::SetCookie($sName, $sValue, $iExpire, $bHttpOnly);
+*/
+		foreach (\str_split($sValue, $iMaxSize) as $i => $sPart) {
+			\setcookie($i ? "{$sName}~{$i}" : $sName, $sPart, array(
+				'expires' => $iExpire,
+				'path' => $sPath,
+//				'domain' => $sDomain,
+				'secure' => isset($_SERVER['HTTPS']) || static::$CookieDefaultSecure,
+				'httponly' => $bHttpOnly,
+				'samesite' => 'Strict'
+			));
 		}
-
-		// cookie splitting!
-		//
-		// logic for this is interesting - we're going to split the cookie up into chunks of say, a large amount
-		// of characters and then add some suffixes and prefixes to determine whether or not the string is contiguous
-		// there is no need for checksums because it's encrypted and JSON encoded, any failure will be unrecoverable
-		//
-		// note: first split will be kept with its original name as there appear to be places in code that check
-		// for $_COOKIE and then end up calling GetSecureCookie - changing that would be very dangerous
-		$iCookieChunkLength = static::SECURE_COOKIE_CHUNK_LENGTH;
-		$iRequiredChunks = (int) ceil($iCookieLength / $iCookieChunkLength);
-
-		for ($i = 0; $i < $iRequiredChunks; ++$i) {
-			$sSplitName = ($i > 0)
-				? $sName . '$' . $i
-				: $sName;
-
-			$sChunkedValue = ($i === 0) ? '^' : '~';
-			$sChunkedValue .= substr($sValue, $iCookieChunkLength * $i, $iCookieChunkLength);
-			$sChunkedValue .= (($i + 1) < $iRequiredChunks) ? '~' : '$';
-
-			static::SetCookie($sSplitName, $sChunkedValue, $iExpire, $bHttpOnly);
-		}
-
-		return;
 	}
 
 	public static function ClearCookie(string $sName)
 	{
-		$aCookieNames = [];
-		$sPath = static::$CookieDefaultPath;
-
-		foreach (array_keys($_COOKIE) as $sCookieName) {
-			if (strtok($sCookieName, '$') === $sName) {
-				$aCookieNames[] = $sCookieName;
+		if (isset($_COOKIE[$sName])) {
+			$sPath = static::$CookieDefaultPath;
+			foreach (\array_keys($_COOKIE) as $sCookieName) {
+				if (\strtok($sCookieName, '~') === $sName) {
+					unset($_COOKIE[$sCookieName]);
+					\setcookie($sCookieName, '', array(
+						'expires' => \time() - 3600 * 24 * 30,
+						'path' => $sPath && \strlen($sPath) ? $sPath : '/',
+//						'domain' => null,
+						'secure' => isset($_SERVER['HTTPS']) || static::$CookieDefaultSecure,
+						'httponly' => true,
+						'samesite' => 'Strict'
+					));
+				}
 			}
-		}
-
-		foreach ($aCookieNames as $sCookieName) {
-			unset($_COOKIE[$sCookieName]);
-
-			setcookie($sCookieName, '', array(
-				'expires' => \time() - 3600 * 24 * 30,
-				'path' => $sPath && \strlen($sPath) ? $sPath : '/',
-				'secure' => isset($_SERVER['HTTPS']) || static::$CookieDefaultSecure,
-				'httponly' => true,
-				'samesite' => 'Strict'
-			));
 		}
 	}
 
