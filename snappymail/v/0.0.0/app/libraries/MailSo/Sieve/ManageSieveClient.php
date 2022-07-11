@@ -107,7 +107,7 @@ class ManageSieveClient extends \MailSo\Net\NetClient
 		if ($this->IsSupported('SASL'))
 		{
 			$type = '';
-			\array_push($aCredentials['SASLMechanisms'], 'PLAIN', 'LOGIN');
+	
 			foreach ($aCredentials['SASLMechanisms'] as $sasl_type) {
 				if ($this->IsAuthSupported($sasl_type) && \SnappyMail\SASL::isSupported($sasl_type)) {
 					$type = $sasl_type;
