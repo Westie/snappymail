@@ -15,7 +15,7 @@ namespace MailSo\Sieve;
  * @category MailSo
  * @package Sieve
  */
-class ManageSieveClient extends \MailSo\Net\NetClient
+class ManageSieveClient extends \MailSo\Net\NetClient implements \SnappyMail\AuthInterface
 {
 	/**
 	 * @var bool
@@ -106,14 +106,7 @@ class ManageSieveClient extends \MailSo\Net\NetClient
 
 		if ($this->IsSupported('SASL'))
 		{
-			$type = '';
-	
-			foreach ($aCredentials['SASLMechanisms'] as $sasl_type) {
-				if ($this->IsAuthSupported($sasl_type) && \SnappyMail\SASL::isSupported($sasl_type)) {
-					$type = $sasl_type;
-					break;
-				}
-			}
+			$type = \SnappyMail\SASL::detectType($this, $aCredentials);
 
 			$SASL = \SnappyMail\SASL::factory($type);
 			$SASL->base64 = true;

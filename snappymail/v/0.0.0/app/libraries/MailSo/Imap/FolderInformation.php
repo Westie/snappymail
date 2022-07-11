@@ -59,7 +59,8 @@ class FolderInformation implements \JsonSerializable
 			\in_array($sFlag, $this->PermanentFlags) ||
 			\in_array($sFlag, $this->Flags);
 	}
-
+	
+	#[\ReturnTypeWillChange]
 	public function jsonSerialize()
 	{
 		$result = array(

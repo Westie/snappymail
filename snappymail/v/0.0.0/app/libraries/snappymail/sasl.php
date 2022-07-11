@@ -19,6 +19,25 @@ abstract class SASL
 		return false;
 	}
 
+	final public static function detectType(AuthInterface $client, array $aCredentials): string
+	{
+		// with the order from https://github.com/the-djmaze/snappymail/pull/423
+		if (empty($aCredentials['SASLMechanisms'])) {
+			$aCredentials['SASLMechanisms'] = [
+				'LOGIN',
+				'PLAIN',
+			];
+		}
+
+		foreach ($aCredentials['SASLMechanisms'] as $mechanism) {
+			if ($client->IsAuthSupported($mechanism) && static::isSupported($mechanism)) {
+				return $mechanism;
+			}
+		}
+
+		throw new Exception('No supported SASL mechanism found');
+	}
+
 	final public static function factory(string $type)
 	{
 		if (\preg_match('/^([A-Z2]+)(?:-(.+))?$/Di', $type, $m)) {

@@ -15,7 +15,7 @@ namespace MailSo\Imap;
  * @category MailSo
  * @package Imap
  */
-class ImapClient extends \MailSo\Net\NetClient
+class ImapClient extends \MailSo\Net\NetClient implements \SnappyMail\AuthInterface
 {
 	use Traits\ResponseParser;
 //	use Commands\ACL;
@@ -133,20 +133,7 @@ class ImapClient extends \MailSo\Net\NetClient
 
 		$this->sLogginedUser = $sLogin;
 
-		foreach ($aCredentials['SASLMechanisms'] as $sasl_type) {
-			if ($this->IsSupported("AUTH={$sasl_type}") && \SnappyMail\SASL::isSupported($sasl_type)) {
-				$type = $sasl_type;
-				break;
-			}
-		}
-
-		if (!$type) {
-			throw new \Exception('No supported SASL mechanism found, remote server wants: '
-				. \implode(', ', \array_filter($this->Capability() ?: [], function($var){
-					return \str_starts_with($var, 'AUTH=');
-				}))
-			);
-		}
+		$type = \SnappyMail\SASL::detectType($this, $aCredentials);
 
 		$SASL = \SnappyMail\SASL::factory($type);
 		$SASL->base64 = true;
@@ -340,6 +327,14 @@ class ImapClient extends \MailSo\Net\NetClient
 	{
 		$sExtentionName = \trim($sExtentionName);
 		return $sExtentionName && \in_array(\strtoupper($sExtentionName), $this->Capability() ?: []);
+	}
+
+	/**
+	 *  IsAuthSupported
+	 */
+	public function IsAuthSupported(string $sAuth) : bool
+	{
+		return $this->IsSupported('AUTH=' . $sAuth);
 	}
 
 	/**

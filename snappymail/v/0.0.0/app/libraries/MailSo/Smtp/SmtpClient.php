@@ -15,7 +15,7 @@ namespace MailSo\Smtp;
  * @category MailSo
  * @package Smtp
  */
-class SmtpClient extends \MailSo\Net\NetClient
+class SmtpClient extends \MailSo\Net\NetClient implements \SnappyMail\AuthInterface
 {
 	/**
 	 * @var bool
@@ -119,21 +119,7 @@ class SmtpClient extends \MailSo\Net\NetClient
 		$sLogin = \MailSo\Base\Utils::IdnToAscii(\MailSo\Base\Utils::Trim($aCredentials['Login']));
 		$sPassword = $aCredentials['Password'];
 
-		$type = '';
-
-		foreach ($aCredentials['SASLMechanisms'] as $sasl_type) {
-			if ($this->IsAuthSupported($sasl_type) && \SnappyMail\SASL::isSupported($sasl_type)) {
-				$type = $sasl_type;
-				break;
-			}
-		}
-
-		if (!$type) {
-			\trigger_error("SMTP {$this->GetConnectedHost()} no supported AUTH options. Disable login" . ($this->IsSupported('STARTTLS') ? ' or try with STARTTLS' : ''));
-			$this->writeLogException(
-				new \MailSo\Smtp\Exceptions\LoginBadMethodException,
-				\MailSo\Log\Enumerations\Type::NOTICE, true);
-		}
+		$type = \SnappyMail\SASL::detectType($this, $aCredentials);
 
 		$SASL = \SnappyMail\SASL::factory($type);
 		$SASL->base64 = true;
